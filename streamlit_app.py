@@ -1,8 +1,8 @@
 # streamlit_app.py
+import joblib
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
 from pathlib import Path
 
 # Configuración de la página
