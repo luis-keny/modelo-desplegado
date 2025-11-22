@@ -1,15 +1,18 @@
 streamlit==1.37.1
-numpy==1.26.4
-scipy==1.11.4
+
+# Núcleo ML (coherente con el entrenamiento)
+numpy==2.2.4
+scipy==1.13.0      # clave: >=1.13 para soportar NumPy 2.x
 pandas==2.2.2
-scikit-learn==1.5.1
+scikit-learn==1.6.1
+joblib==1.5.2
 imbalanced-learn==0.12.3
-joblib==1.4.2
 catboost==1.2.8
 
+# Stats / series
+statsmodels==0.14.2   # si subes SciPy a 1.14.1, mejor 0.14.3 por compatibilidad:contentReference[oaicite:1]{index=1}
+
+# Visualización
 seaborn
 matplotlib
 plotly
-statsmodels==0.14.2
-
-
