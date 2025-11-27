@@ -199,9 +199,6 @@ if modulo == "🔮 Predicción de Entregas":
         hora_inicio_ventana = datetime.combine(hora_actual.date(), hora_inicio_entrega)
         hora_fin_ventana = datetime.combine(hora_actual.date(), hora_fin_entrega)
         
-        if hora_inicio_ventana < hora_actual:
-            hora_inicio_ventana += timedelta(days=1)
-            hora_fin_ventana += timedelta(days=1)
         
         demora_minutos = (hora_llegada_estimada - hora_inicio_ventana).total_seconds() / 60
         tiempo_real_simulado = tiempo_estimado + (demora_minutos if demora_minutos > 0 else 0)
