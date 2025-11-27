@@ -50,8 +50,224 @@ if modulo == "🔮 Predicción de Entregas":
         st.error(f"❌ Error al cargar el modelo: {e}")
         st.stop()
     
-    # Formulario de entrada
-    st.markdown("### 📝 Ingrese los datos del envío")
+    # ==========================
+    # CASOS PREDEFINIDOS
+    # ==========================
+    casos_predefinidos = {
+        "Caso 1: Ruta Corta - Condiciones Óptimas": {
+            "descripcion": "Entrega de 50 km en condiciones ideales con amplia ventana de entrega",
+            "datos": {
+                "clima": "Bueno",
+                "trafico": "Bajo",
+                "riesgo_ruta": "Bajo",
+                "distancia_km": 50.0,
+                "tipo_carga": "Normal",
+                "peso_kg": 700,
+                "hora_inicio_entrega": pd.Timestamp("14:30").time(),
+                "hora_fin_entrega": pd.Timestamp("21:45").time(),
+                "experiencia": 5,
+                "antiguedad_camion": 3,
+                "fallas_mecanicas": "No",
+                "nivel_combustible": 90.0
+            },
+            "contexto": {
+                "conductor": "C045",
+                "frenadas_duras": 18,
+                "excesos_velocidad": 5,
+                "infracciones": 2,
+                "incidentes_carga": 1,
+                "accidentes_leves": 1,
+                "reclamos": 3,
+                "horas_mes": 190,
+                "km_mes": 8500,
+                "entregas_mes": 95,
+                "asistencia_capacitacion": "75%",
+                "indice_fatiga": 0.68
+            },
+            "recomendaciones": [
+                "**Conducción**: Mantener ruta y horario actuales con conducción suave; evitar acelerar innecesariamente",
+                "**Ventana de tiempo**: Aprovechar la holgura de la ventana (12:30–21:45); no hay presión de reloj",
+                "**Planificación**: Mantener programación actual, sin cambios de ruta ni horarios",
+                "**Gestión del conductor**: Monitorear frenadas duras, excesos y reclamos; usar esta ruta simple para corregir hábitos con baja presión",
+                "**Capacitación**: Programar capacitación en conducción defensiva, gestión de fatiga y cuidado de carga"
+            ],
+            "riesgos": {
+                "servicio": "Bajo",
+                "seguridad": "Medio (por estilo y fatiga)",
+                "mecanico": "Bajo",
+                "global": "Bajo"
+            }
+        },
+        "Caso 2: Ruta Larga - Clima Adverso": {
+            "descripcion": "Entrega de 200 km con lluvia, tráfico alto y ventana de entrega ajustada",
+            "datos": {
+                "clima": "Lluvia",
+                "trafico": "Alto",
+                "riesgo_ruta": "Bajo",
+                "distancia_km": 200.0,
+                "tipo_carga": "Normal",
+                "peso_kg": 1000,
+                "hora_inicio_entrega": pd.Timestamp("14:30").time(),
+                "hora_fin_entrega": pd.Timestamp("19:00").time(),
+                "experiencia": 5,
+                "antiguedad_camion": 3,
+                "fallas_mecanicas": "No",
+                "nivel_combustible": 80.0
+            },
+            "contexto": {
+                "conductor": "C045",
+                "frenadas_duras": 18,
+                "excesos_velocidad": 5,
+                "infracciones": 2,
+                "incidentes_carga": 1,
+                "accidentes_leves": 1,
+                "reclamos": 3,
+                "horas_mes": 190,
+                "km_mes": 8500,
+                "entregas_mes": 95,
+                "asistencia_capacitacion": "75%",
+                "indice_fatiga": 0.68
+            },
+            "recomendaciones": [
+                "**Conducción**: Prohibir compensar el retraso con exceso de velocidad; exigir conducción defensiva en lluvia y tráfico alto",
+                "**Ventana de tiempo**: Reconocer que la ventana 12:30–16:00 ya es inalcanzable; no forzar la operación",
+                "**Planificación**: Reprogramar la entrega con una nueva franja/fecha basada en el ETA real (~12h 45min)",
+                "**Comunicación con cliente**: Informar de inmediato que no se podrá cumplir la ventana original; acordar nueva franja",
+                "**Rutas alternativas**: Evaluar rutas menos congestionadas solo si no aumentan el riesgo; priorizar seguridad",
+                "**Capacitación**: Capacitación específica en conducción segura con clima adverso y manejo de estrés por retrasos"
+            ],
+            "riesgos": {
+                "servicio": "Muy alto / crítico",
+                "seguridad": "Medio–alto (lluvia + tráfico alto + estilo agresivo + fatiga)",
+                "mecanico": "Bajo",
+                "global": "Alto (dominante por servicio, con componente de seguridad)"
+            }
+        },
+        "Caso 3: Ruta Larga - Riesgo Mecánico": {
+            "descripcion": "Entrega de 400 km con tráfico alto, vehículo con historial de fallas y ventana ajustada",
+            "datos": {
+                "clima": "Bueno",
+                "trafico": "Alto",
+                "riesgo_ruta": "Bajo",
+                "distancia_km": 400.0,
+                "tipo_carga": "Normal",
+                "peso_kg": 1000,
+                "hora_inicio_entrega": pd.Timestamp("14:30").time(),
+                "hora_fin_entrega": pd.Timestamp("19:00").time(),
+                "experiencia": 5,
+                "antiguedad_camion": 3,
+                "fallas_mecanicas": "Si",
+                "nivel_combustible": 80.0
+            },
+            "contexto": {
+                "conductor": "C045",
+                "frenadas_duras": 18,
+                "excesos_velocidad": 5,
+                "infracciones": 2,
+                "incidentes_carga": 1,
+                "accidentes_leves": 1,
+                "reclamos": 3,
+                "horas_mes": 190,
+                "km_mes": 8500,
+                "entregas_mes": 95,
+                "asistencia_capacitacion": "75%",
+                "indice_fatiga": 0.68
+            },
+            "recomendaciones": [
+                "**Conducción**: Conducción defensiva estricta; no intentar recuperar retraso con maniobras agresivas ni exceso de velocidad",
+                "**Ventana de tiempo**: Aceptar que la ventana 12:30–16:00 es inviable con el tiempo estimado disponible",
+                "**Planificación**: Reprogramar considerando ETA extendido y riesgo mecánico, incluso evaluar moverla a otro vehículo/día",
+                "**Comunicación con cliente**: Informar el riesgo mecánico y la necesidad de una reprogramación ordenada y segura",
+                "**Rutas alternativas**: Evaluar rutas menos congestionadas y más seguras, sin exigir al vehículo; considerar dividir el trayecto",
+                "**Gestión del conductor**: Evitar asignarle varias rutas largas seguidas hasta que mejore su fatiga y estilo de conducción",
+                "**Gestión del vehículo**: Realizar revisión mecánica exhaustiva antes de nuevas rutas largas; clasificar como 'en observación'",
+                "**Capacitación**: Capacitación en conducción segura en tráfico denso, gestión de fatiga y prevención de fallas"
+            ],
+            "riesgos": {
+                "servicio": "Muy alto / crítico",
+                "seguridad": "Medio–alto (tráfico alto + estilo agresivo + fatiga)",
+                "mecanico": "Medio–alto (historial de fallas + ruta larga)",
+                "global": "Alto (servicio crítico + riesgos de seguridad y mecánicos)"
+            }
+        }
+    }
+    
+    # ==========================
+    # SELECTOR DE MODO
+    # ==========================
+    st.markdown("### 🎯 Modo de Entrada")
+    
+    col_modo1, col_modo2 = st.columns(2)
+    
+    with col_modo1:
+        modo_entrada = st.selectbox(
+            "Seleccione el modo de entrada",
+            options=["📝 Entrada Manual", "📋 Casos Predefinidos"],
+            help="Elija entre ingresar datos manualmente o cargar un caso de ejemplo"
+        )
+    
+    # Si se selecciona casos predefinidos
+    caso_seleccionado = None
+    if modo_entrada == "📋 Casos Predefinidos":
+        with col_modo2:
+            caso_seleccionado = st.selectbox(
+                "Seleccione un caso",
+                options=list(casos_predefinidos.keys()),
+                help="Casos de ejemplo con diferentes niveles de riesgo"
+            )
+        
+        # Mostrar descripción del caso
+        if caso_seleccionado:
+            caso = casos_predefinidos[caso_seleccionado]
+            st.info(f"📄 **Descripción**: {caso['descripcion']}")
+            
+            # Mostrar contexto del conductor
+            with st.expander("👤 Contexto del Conductor C045"):
+                ctx = caso['contexto']
+                col_ctx1, col_ctx2, col_ctx3 = st.columns(3)
+                
+                with col_ctx1:
+                    st.metric("Frenadas Duras", ctx['frenadas_duras'])
+                    st.metric("Excesos de Velocidad", ctx['excesos_velocidad'])
+                    st.metric("Infracciones", ctx['infracciones'])
+                
+                with col_ctx2:
+                    st.metric("Incidentes de Carga", ctx['incidentes_carga'])
+                    st.metric("Accidentes Leves", ctx['accidentes_leves'])
+                    st.metric("Reclamos", ctx['reclamos'])
+                
+                with col_ctx3:
+                    st.metric("Horas/Mes", f"{ctx['horas_mes']} h")
+                    st.metric("Km/Mes", f"{ctx['km_mes']:,} km")
+                    st.metric("Índice de Fatiga", ctx['indice_fatiga'], 
+                             delta="Elevado" if ctx['indice_fatiga'] > 0.6 else "Normal",
+                             delta_color="inverse" if ctx['indice_fatiga'] > 0.6 else "normal")
+    
+    st.markdown("---")
+    
+    # ==========================
+    # FORMULARIO DE ENTRADA
+    # ==========================
+    st.markdown("### 📝 Datos del Envío")
+    
+    # Obtener valores del caso o usar valores por defecto
+    if caso_seleccionado:
+        valores = casos_predefinidos[caso_seleccionado]['datos']
+    else:
+        valores = {
+            "clima": "Bueno",
+            "trafico": "Bajo",
+            "riesgo_ruta": "Bajo",
+            "distancia_km": 50.0,
+            "tipo_carga": "Normal",
+            "peso_kg": 1000,
+            "hora_inicio_entrega": pd.Timestamp("09:00").time(),
+            "hora_fin_entrega": pd.Timestamp("11:00").time(),
+            "experiencia": 5,
+            "antiguedad_camion": 3,
+            "fallas_mecanicas": "No",
+            "nivel_combustible": 80.0
+        }
     
     col1, col2, col3 = st.columns(3)
     
@@ -60,18 +276,21 @@ if modulo == "🔮 Predicción de Entregas":
         clima = st.selectbox(
             "Clima",
             options=["Bueno", "Lluvia", "Tormenta"],
+            index=["Bueno", "Lluvia", "Tormenta"].index(valores["clima"]),
             help="Condiciones meteorológicas esperadas"
         )
         
         trafico = st.selectbox(
             "Nivel de Tráfico",
             options=["Bajo", "Medio", "Alto"],
+            index=["Bajo", "Medio", "Alto"].index(valores["trafico"]),
             help="Congestión vehicular esperada"
         )
         
         riesgo_ruta = st.selectbox(
             "Riesgo de Ruta",
             options=["Bajo", "Medio", "Alto"],
+            index=["Bajo", "Medio", "Alto"].index(valores["riesgo_ruta"]),
             help="Nivel de riesgo de la ruta (seguridad, condiciones del camino)"
         )
         
@@ -79,7 +298,7 @@ if modulo == "🔮 Predicción de Entregas":
             "Distancia Total (km)",
             min_value=0.0,
             max_value=1000.0,
-            value=50.0,
+            value=float(valores["distancia_km"]),
             step=1.0,
             format="%.2f",
             help="Distancia total de la ruta"
@@ -89,14 +308,15 @@ if modulo == "🔮 Predicción de Entregas":
         st.markdown("#### 📦 Información de la Carga")
         tipo_carga = st.selectbox(
             "Tipo de Carga",
-            options=["Normal", "Fragil", "Peligrosa"]
+            options=["Normal", "Fragil", "Peligrosa"],
+            index=["Normal", "Fragil", "Peligrosa"].index(valores["tipo_carga"])
         )
         
         peso_kg = st.number_input(
             "Peso de Carga (kg)",
             min_value=0,
             max_value=20000,
-            value=1000,
+            value=int(valores["peso_kg"]),
             step=100,
             help="Peso total de la carga"
         )
@@ -104,13 +324,13 @@ if modulo == "🔮 Predicción de Entregas":
         st.markdown("##### ⏰ Ventana de Entrega")
         hora_inicio_entrega = st.time_input(
             "Hora inicio de ventana de entrega",
-            value=pd.Timestamp("09:00").time(),
+            value=valores["hora_inicio_entrega"],
             help="Primera hora en que se puede entregar"
         )
         
         hora_fin_entrega = st.time_input(
             "Hora fin de ventana de entrega",
-            value=pd.Timestamp("11:00").time(),
+            value=valores["hora_fin_entrega"],
             help="Última hora en que se puede entregar"
         )
     
@@ -120,7 +340,7 @@ if modulo == "🔮 Predicción de Entregas":
             "Experiencia del Conductor (años)",
             min_value=0,
             max_value=40,
-            value=5,
+            value=int(valores["experiencia"]),
             help="Años de experiencia en entregas"
         )
         
@@ -128,13 +348,14 @@ if modulo == "🔮 Predicción de Entregas":
             "Antigüedad del Vehículo (años)",
             min_value=0,
             max_value=30,
-            value=3,
+            value=int(valores["antiguedad_camion"]),
             help="Edad del vehículo"
         )
         
         fallas_mecanicas = st.selectbox(
             "Historial de Fallas Mecánicas",
             options=["No", "Si"],
+            index=["No", "Si"].index(valores["fallas_mecanicas"]),
             help="¿El vehículo ha tenido fallas recientes?"
         )
         
@@ -142,7 +363,7 @@ if modulo == "🔮 Predicción de Entregas":
             "Nivel de Combustible Inicial (%)",
             min_value=0.0,
             max_value=100.0,
-            value=80.0,
+            value=float(valores["nivel_combustible"]),
             step=5.0,
             format="%.1f"
         )
@@ -199,7 +420,6 @@ if modulo == "🔮 Predicción de Entregas":
         hora_inicio_ventana = datetime.combine(hora_actual.date(), hora_inicio_entrega)
         hora_fin_ventana = datetime.combine(hora_actual.date(), hora_fin_entrega)
         
-        
         demora_minutos = (hora_llegada_estimada - hora_inicio_ventana).total_seconds() / 60
         tiempo_real_simulado = tiempo_estimado + (demora_minutos if demora_minutos > 0 else 0)
         
@@ -247,6 +467,32 @@ if modulo == "🔮 Predicción de Entregas":
             st.success("✅ Llegará a tiempo")
         else:
             st.error("❌ Llegará tarde")
+        
+        # Mostrar recomendaciones si es un caso predefinido
+        if caso_seleccionado:
+            caso = casos_predefinidos[caso_seleccionado]
+            
+            st.markdown("---")
+            st.subheader("💡 Recomendaciones y Plan de Acción")
+            
+            # Tabla de riesgos
+            st.markdown("#### ⚠️ Evaluación de Riesgos")
+            riesgos = caso['riesgos']
+            
+            col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+            with col_r1:
+                st.metric("Riesgo de Servicio", riesgos['servicio'])
+            with col_r2:
+                st.metric("Riesgo de Seguridad", riesgos['seguridad'])
+            with col_r3:
+                st.metric("Riesgo Mecánico", riesgos['mecanico'])
+            with col_r4:
+                st.metric("Riesgo Global", riesgos['global'])
+            
+            # Recomendaciones
+            st.markdown("#### 📋 Acciones Recomendadas")
+            for recomendacion in caso['recomendaciones']:
+                st.markdown(f"- {recomendacion}")
 
 # ==========================
 # MÓDULO 2: CLUSTERING + PCA
