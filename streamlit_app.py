@@ -372,7 +372,7 @@ else:
     
     # Botón de análisis
     if st.button("📈 Analizar Conductor", type="primary", use_container_width=True):
-        
+    
         # Crear DataFrame con los datos
         datos_conductor = pd.DataFrame([{
             "frenadas_duras": frenadas_duras,
@@ -388,7 +388,7 @@ else:
             "indice_fatiga": indice_fatiga
         }])
         
-        # Generar datos sintéticos para comparación (simulación de otros conductores)
+        # Generar datos sintéticos para comparación
         np.random.seed(42)
         n_conductores = 200
         
@@ -409,107 +409,190 @@ else:
         # Combinar datos
         datos_completos = pd.concat([datos_simulados, datos_conductor], ignore_index=True)
         
-        # Normalizar datos
-        scaler = StandardScaler()
-        datos_normalizados = scaler.fit_transform(datos_completos)
+        # ================================
+        # PCA POR BLOQUES (3 SCORES)
+        # ================================
+        cols_riesgo = ["frenadas_duras", "excesos_velocidad", "incidentes_carga", "infracciones"]
+        cols_experiencia = ["horas_manejo_mes", "km_mes", "entregas_mes"]
+        cols_seguridad = ["reclamos_clientes", "accidentes_leves", "asistencia_capacitaciones", "indice_fatiga"]
         
-        # Aplicar PCA
-        pca = PCA(n_components=2)
-        datos_pca = pca.fit_transform(datos_normalizados)
+        def escalar_0_100(valor, todos):
+            vmin = todos.min()
+            vmax = todos.max()
+            if vmax == vmin:
+                return 50.0
+            return 100 * (valor - vmin) / (vmax - vmin)
         
-        # Aplicar K-Means
+        # --- PCA 1: Score de Riesgo ---
+        scaler_riesgo = StandardScaler()
+        riesgo_scaled = scaler_riesgo.fit_transform(datos_completos[cols_riesgo])
+        pca_riesgo = PCA(n_components=1)
+        riesgo_pc1 = pca_riesgo.fit_transform(riesgo_scaled).flatten()
+        
+        # CORRECCIÓN: Verificar dirección del PCA de riesgo
+        # Los loadings indican cómo cada variable contribuye al componente
+        loadings_riesgo = pca_riesgo.components_[0]
+        
+        # Calcular el promedio de los loadings (todas las variables de riesgo deben contribuir positivamente)
+        # Si la mayoría son negativos, invertimos la dirección
+        if np.mean(loadings_riesgo) < 0:
+            riesgo_pc1 = -riesgo_pc1
+        
+        score_riesgo = escalar_0_100(riesgo_pc1[-1], riesgo_pc1)
+        
+        if score_riesgo < 33:
+            nivel_riesgo = "Bajo"
+        elif score_riesgo < 66:
+            nivel_riesgo = "Medio"
+        else:
+            nivel_riesgo = "Alto"
+        
+        # --- PCA 2: Experticia ---
+        scaler_exp = StandardScaler()
+        exp_scaled = scaler_exp.fit_transform(datos_completos[cols_experiencia])
+        pca_exp = PCA(n_components=1)
+        exp_pc1 = pca_exp.fit_transform(exp_scaled).flatten()
+        
+        # Verificar dirección (más horas/km/entregas = más experticia)
+        loadings_exp = pca_exp.components_[0]
+        if np.mean(loadings_exp) < 0:
+            exp_pc1 = -exp_pc1
+        
+        score_exp = escalar_0_100(exp_pc1[-1], exp_pc1)
+        
+        if score_exp < 33:
+            nivel_exp = "Junior"
+        elif score_exp < 66:
+            nivel_exp = "Intermedio"
+        else:
+            nivel_exp = "Senior"
+        
+        # --- PCA 3: Seguridad / Fatiga ---
+        seg_df = datos_completos[cols_seguridad].copy()
+        seg_df["asistencia_capacitaciones"] = -seg_df["asistencia_capacitaciones"]
+        
+        scaler_seg = StandardScaler()
+        seg_scaled = scaler_seg.fit_transform(seg_df)
+        pca_seg = PCA(n_components=1)
+        seg_pc1 = pca_seg.fit_transform(seg_scaled).flatten()
+        
+        score_seg = escalar_0_100(seg_pc1[-1], seg_pc1)
+        
+        if score_seg < 33:
+            nivel_seg = "Buena seguridad / baja fatiga"
+        elif score_seg < 66:
+            nivel_seg = "Vigilancia necesaria"
+        else:
+            nivel_seg = "Crítico (alto riesgo / fatiga)"
+        
+        # ================================
+        # CLUSTERING BASADO EN RIESGO Y EXPERTICIA
+        # ================================
+        # Crear matriz de features para clustering (solo Riesgo y Experticia)
+        features_clustering = np.column_stack([riesgo_pc1, exp_pc1])
+        
+        # Aplicar K-Means sobre estos dos componentes
         n_clusters = 4
         kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-        clusters = kmeans.fit_predict(datos_normalizados)
+        clusters = kmeans.fit_predict(features_clustering)
         
-        # Identificar el cluster del conductor actual
+        # Identificar cluster del conductor
         cluster_conductor = clusters[-1]
         
-        # Crear DataFrame para visualización
+        # ASIGNAR NOMBRES BASADOS EN CENTROIDES
+        centroides = kmeans.cluster_centers_
+        nombres_clusters = {}
+        
+        for i, centroide in enumerate(centroides):
+            riesgo_centroide = centroide[0]
+            exp_centroide = centroide[1]
+            
+            # Clasificar según cuadrante
+            if riesgo_centroide < np.median(riesgo_pc1) and exp_centroide > np.median(exp_pc1):
+                nombres_clusters[i] = "🟢 MAESTRO_IDEAL"
+            elif riesgo_centroide < np.median(riesgo_pc1) and exp_centroide < np.median(exp_pc1):
+                nombres_clusters[i] = "🟡 NOVATO_SEGURO"
+            elif riesgo_centroide > np.median(riesgo_pc1) and exp_centroide > np.median(exp_pc1):
+                nombres_clusters[i] = "🟠 EXPERTO_RIESGOSO"
+            else:
+                nombres_clusters[i] = "🔴 NOVATO_RIESGOSO"
+        
+        # ================================
+        # PCA 2D GLOBAL PARA VISUALIZACIÓN
+        # ================================
+        scaler_global = StandardScaler()
+        datos_normalizados_global = scaler_global.fit_transform(datos_completos)
+        pca_global = PCA(n_components=2)
+        datos_pca_global = pca_global.fit_transform(datos_normalizados_global)
+        
         df_viz = pd.DataFrame({
-            "PC1": datos_pca[:, 0],
-            "PC2": datos_pca[:, 1],
+            "PC1": datos_pca_global[:, 0],
+            "PC2": datos_pca_global[:, 1],
             "Cluster": clusters,
             "Tipo": ["Otros Conductores"] * n_conductores + ["Conductor Actual"]
         })
         
-        # Nombres de clusters
-        nombres_clusters = {
-            0: "🟢 Conductores Ejemplares",
-            1: "🟡 Conductores Promedio",
-            2: "🟠 Conductores en Desarrollo",
-            3: "🔴 Conductores de Alto Riesgo"
-        }
-        
+        # ================================
+        # MOSTRAR RESULTADOS
+        # ================================
         st.subheader("📊 Resultados del Análisis")
         
-        # Métricas principales
         col_m1, col_m2, col_m3 = st.columns(3)
         
         with col_m1:
-            st.metric("🎯 Cluster Asignado", nombres_clusters.get(cluster_conductor, f"Cluster {cluster_conductor}"))
+            st.metric("🎯 Cluster Asignado", nombres_clusters[cluster_conductor])
         
         with col_m2:
-            varianza_explicada = sum(pca.explained_variance_ratio_[:2]) * 100
-            st.metric("📉 Varianza Explicada (PCA)", f"{varianza_explicada:.1f}%")
+            st.metric("⚠️ Nivel de Riesgo", nivel_riesgo)
         
         with col_m3:
-            conductores_mismo_cluster = sum(clusters[:-1] == cluster_conductor)
-            st.metric("👥 Conductores en tu Cluster", conductores_mismo_cluster)
+            st.metric("👨‍💼 Nivel de Experticia", nivel_exp)
         
         st.markdown("---")
         
-        # Visualización PCA + Clustering
-        fig = go.Figure()
+        # Mostrar los 3 PCA como scores
+        st.markdown("### 🎛 Scores PCA por dimensión")
         
-        # Plotear otros conductores
-        for cluster_id in range(n_clusters):
-            mask = (df_viz["Tipo"] == "Otros Conductores") & (df_viz["Cluster"] == cluster_id)
-            fig.add_trace(go.Scatter(
-                x=df_viz[mask]["PC1"],
-                y=df_viz[mask]["PC2"],
-                mode="markers",
-                name=nombres_clusters.get(cluster_id, f"Cluster {cluster_id}"),
-                marker=dict(size=8, opacity=0.6),
-                showlegend=True
-            ))
+        c1, c2, c3 = st.columns(3)
         
-        # Plotear conductor actual
-        conductor_mask = df_viz["Tipo"] == "Conductor Actual"
-        fig.add_trace(go.Scatter(
-            x=df_viz[conductor_mask]["PC1"],
-            y=df_viz[conductor_mask]["PC2"],
-            mode="markers",
-            name="TÚ",
-            marker=dict(size=20, symbol="star", color="gold", line=dict(width=2, color="black")),
-            showlegend=True
-        ))
+        with c1:
+            st.metric(
+                "Score de Riesgo (0-100)",
+                f"{score_riesgo:.1f}%",
+                help="Basado en frenadas duras, excesos de velocidad, incidentes con carga e infracciones. Mayor score = Mayor riesgo"
+            )
+            st.write(f"Nivel de riesgo: **{nivel_riesgo}**")
+            
+            # Mostrar loadings para transparencia
+            with st.expander("📊 Ver contribución de variables"):
+                for var, loading in zip(cols_riesgo, pca_riesgo.components_[0]):
+                    st.write(f"- {var}: {loading:.3f}")
         
-        # Plotear centroides
-        centroides_pca = pca.transform(scaler.transform(kmeans.cluster_centers_))
-        fig.add_trace(go.Scatter(
-            x=centroides_pca[:, 0],
-            y=centroides_pca[:, 1],
-            mode="markers",
-            name="Centroides",
-            marker=dict(size=15, symbol="x", color="black", line=dict(width=2)),
-            showlegend=True
-        ))
+        with c2:
+            st.metric(
+                "Score de Experticia (0-100)",
+                f"{score_exp:.1f}%",
+                help="Basado en horas de manejo, km recorridos y entregas realizadas."
+            )
+            st.write(f"Nivel de experticia: **{nivel_exp}**")
+            
+            with st.expander("📊 Ver contribución de variables"):
+                for var, loading in zip(cols_experiencia, pca_exp.components_[0]):
+                    st.write(f"- {var}: {loading:.3f}")
         
-        fig.update_layout(
-            title="Análisis PCA + K-Means: Posición del Conductor",
-            xaxis_title=f"Componente Principal 1 ({pca.explained_variance_ratio_[0]*100:.1f}% varianza)",
-            yaxis_title=f"Componente Principal 2 ({pca.explained_variance_ratio_[1]*100:.1f}% varianza)",
-            height=600,
-            hovermode="closest"
-        )
+        with c3:
+            st.metric(
+                "Índice Seguridad / Fatiga (0-100)",
+                f"{score_seg:.1f}%",
+                help="Basado en reclamos, accidentes, capacitaciones y nivel de fatiga."
+            )
+            st.write(f"Situación: **{nivel_seg}**")
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.markdown("---")
         
-        # Análisis de características principales
+        # Análisis de características del cluster
         st.markdown("### 🔍 Características del Cluster")
         
-        # Calcular estadísticas del cluster
         mask_cluster = clusters[:-1] == cluster_conductor
         if mask_cluster.sum() > 0:
             stats_cluster = datos_simulados[mask_cluster].mean()
@@ -535,14 +618,14 @@ else:
         # Recomendaciones según cluster
         st.markdown("### 💡 Recomendaciones")
         
-        if cluster_conductor == 0:
+        if "MAESTRO_IDEAL" in nombres_clusters[cluster_conductor]:
             st.success("¡Excelente desempeño! Mantén tus buenos hábitos de conducción y seguridad.")
-        elif cluster_conductor == 1:
-            st.info("Rendimiento aceptable. Considera mejorar en áreas de seguridad y capacitación.")
-        elif cluster_conductor == 2:
-            st.warning("Hay espacio para mejorar. Enfócate en reducir incidentes y aumentar capacitación.")
+        elif "NOVATO_SEGURO" in nombres_clusters[cluster_conductor]:
+            st.info("Buen perfil de seguridad. Aumenta tu experiencia y productividad para avanzar.")
+        elif "EXPERTO_RIESGOSO" in nombres_clusters[cluster_conductor]:
+            st.warning("Alta experiencia pero con comportamientos riesgosos. Reduce infracciones y mejora hábitos de conducción.")
         else:
-            st.error("Requiere atención inmediata. Es necesario mejorar hábitos de conducción y seguridad.")
+            st.error("Requiere atención inmediata. Necesitas mejorar tanto en experiencia como en seguridad.")
 
 st.markdown("---")
 st.caption("🔧 Sistema de Análisis de Entregas v3.0 | Hora actual: " + datetime.now().strftime("%H:%M:%S"))
